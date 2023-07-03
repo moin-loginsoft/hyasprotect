@@ -18,7 +18,7 @@
             "defaultValue": "<workspaceKey>",
             "minLength": 1
         },
-        "ApiKey": {
+        "APIKey": {
             "type": "securestring",
             "defaultValue": "<changeme>",
             "minLength": 1
@@ -33,7 +33,7 @@
                 "Every 12 hours",
                 "Every 24 hours"
             ],
-			"defaultValue": "Every 6 hours",
+			"defaultValue": "Every 5 min",
             "metadata": {
                 "description": "Select the Interval."
             }
@@ -73,6 +73,16 @@
             ],
 			"minLength": 1,
 			"type": "string"
+        },
+		 "Start": {
+            "type": "string",
+            "defaultValue": "2022-06-06T00:00:00.000Z",
+            "minLength": 1
+        },
+		 "End": {
+            "type": "string",
+            "defaultValue": "2023-06-07T23:59:59.999Z",
+            "minLength": 1
         }
     },
     "variables": {
@@ -87,7 +97,7 @@
         "FunctionName": "[concat(toLower(parameters('FunctionName')), take(uniqueString(resourceGroup().id), 3))]",
         "StorageSuffix": "[environment().suffixes.storage]",
         "LogAnaltyicsUri": "[replace(environment().portal, 'https://portal', concat('https://', toLower(parameters('WorkspaceID')), '.ods.opinsights'))]",
-        "Polling": "[variables('PollingMap')[parameters('TimeInterval')]]",
+        "Polling": "[variables('PollingMap')[parameters('TimeInterval')]]"
 
     },
     "resources": [
@@ -219,7 +229,9 @@
                         "logAnalyticsUri": "[variables('LogAnaltyicsUri')]",
                         "timeInterval": "[parameters('TimeInterval')]",
                         "Polling":  "[variables('Polling')]",
-                        "WEBSITE_RUN_FROM_PACKAGE": "https://github.com/moin-loginsoft/hyasprotect/archive/refs/heads/main.zip"
+						"Start": "[parameters('Start')]",
+						"End": "[parameters('End')]",
+                        "WEBSITE_RUN_FROM_PACKAGE": "https://github.com/moin-loginsoft/HyasProtect/archive/refs/heads/main.zip"
 
                     }
                 }
