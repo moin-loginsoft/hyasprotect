@@ -65,6 +65,7 @@ def call_hyas_protect_api():
     )
     # Optional: Provide any required headers or parameters
     headers = {"Content-Type": "application/json", "X-API-Key": HYAS_API_KEY}
+
     query_data = {
         "id": "datetime",
         "isRange": True,
@@ -74,23 +75,20 @@ def call_hyas_protect_api():
             "timeType": "range",
         },
     }
+
     applied_filters = [query_data]
 
-    if FetchBlockedDomains == "Yes":
-        blocked_query = {"id": "reputation", "value": "blocked"}
-        applied_filters.append(blocked_query)
+    filter_options = {
+        "FetchBlockedDomains": "blocked",
+        "FetchSuspiciousDomains": "suspicious",
+        "FetchMaliciousDomains": "malicious",
+        "FetchPermittedDomains": "permitted",
+    }
 
-    if FetchSuspiciousDomains == "Yes":
-        blocked_query = {"id": "reputation", "value": "suspicious"}
-        applied_filters.append(blocked_query)
-
-    if FetchMaliciousDomains == "Yes":
-        blocked_query = {"id": "reputation", "value": "malicious"}
-        applied_filters.append(blocked_query)
-
-    if FetchPermittedDomains == "Yes":
-        blocked_query = {"id": "reputation", "value": "permitted"}
-        applied_filters.append(blocked_query)
+    for option, value in filter_options.items():
+        if globals().get(option) == "Yes":
+            blocked_query = {"id": "reputation", "value": value}
+            applied_filters.append(blocked_query)
 
     data = {"applied_filters": applied_filters}
     total_count = 1
@@ -107,7 +105,7 @@ def call_hyas_protect_api():
             "sort": "datetime",
         }
         data["paging"] = paging_params
-        logging.info(f"Applied filter - {str(data)}")
+
         # Make the API call
         response = requests.post(url, headers=headers, data=dumps(data))
         if response.status_code in range(200, 299):
@@ -122,7 +120,7 @@ def call_hyas_protect_api():
             )
             if sentinel_resp is not None:
                 logging.info(
-                    f"Logs from {from_date} to {to_date} saved in sentinel successfully."
+                    f"Logs from {from_date} to {to_date} with filter {str(data)} saved in sentinel successfully."
                 )
         else:
             # Print the error message if the request was unsuccessful
