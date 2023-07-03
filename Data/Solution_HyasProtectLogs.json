@@ -1,0 +1,14 @@
+{
+    "Name": "HyasProtectLogs",
+    "Author": "Cybersixgill",
+    "Logo": "<img src=\"https://raw.githubusercontent.com/Azure/Azure-Sentinel/master/Logos/Cybersixgill.svg\" width=\"75\" height=\"75\" >",
+    "Description": "Cybersixgill Actionable Alerts provides a premium automated customized threat intelligence feed from the deep and dark web. Monitor activity in the underground regarding your key assets (Names, IP Address, Domains, CVEs, Third party suppliers ) relevant to their brand, industry, and geolocation and receive real time alert notifications on incoming threats on your organization including: Contextual data, assessments and recommendations",
+    "Data Connectors": [
+        "Data Connectors/HyasProtectLogs_FunctionApp.json"
+    ],
+    "BasePath": "D:/Sentinel-Forked/Solutions/Cybersixgill-Actionable-Alerts/",
+    "Version": "2.0.1",
+    "Metadata": "SolutionMetadata.json",
+    "TemplateSpec": true,
+    "Is1PConnector": false
+  }
