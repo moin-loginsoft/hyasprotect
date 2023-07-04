@@ -6,25 +6,30 @@ from base64 import b64decode, b64encode
 
 
 def build_signature(
-    customer_id:str, shared_key:str, date:str, content_length:str, method:str, content_type:str, resource:str
+    customer_id: str,
+    shared_key: str,
+    date: str,
+    content_length: str,
+    method: str,
+    content_type: str,
+    resource: str,
 ):
     """
-        Builds the signature for authenticating requests to Azure Sentinel.
+    Builds the signature for authenticating requests to Azure Sentinel.
 
-        Args:
-            customer_id (str): The customer ID or workspace ID for Azure Sentinel.
-            shared_key (str): The shared key for authentication with Azure Sentinel.
-            date (str): The date and time of the request in RFC1123 format.
-            content_length (int): The length of the request body in bytes.
-            method (str): The HTTP method of the request.
-            content_type (str): The content type of the request.
-            resource (str): The resource being accessed.
+    Args:
+        customer_id (str): The customer ID or workspace ID for Azure Sentinel.
+        shared_key (str): The shared key for authentication with Azure Sentinel.
+        date (str): The date and time of the request in RFC1123 format.
+        content_length (int): The length of the request body in bytes.
+        method (str): The HTTP method of the request.
+        content_type (str): The content type of the request.
+        resource (str): The resource being accessed.
 
-        Returns:
-            str: The authorization header value for the request.
+    Returns:
+        str: The authorization header value for the request.
     """
-    
-    
+
     x_headers = "x-ms-date:" + date
     string_to_hash = (
         method
@@ -46,18 +51,20 @@ def build_signature(
     return authorization
 
 
-def save_to_sentinel(logAnalyticsUri:str, customer_id:str, shared_key:str, logs_obj:str):
+def save_to_sentinel(
+    logAnalyticsUri: str, customer_id: str, shared_key: str, logs_obj: str
+):
     """
-        Saves logs to Azure Sentinel using the specified logAnalyticsUri, customer_id, shared_key, and logs_obj.
+    Saves logs to Azure Sentinel using the specified logAnalyticsUri, customer_id, shared_key, and logs_obj.
 
-        Args:
-            logAnalyticsUri (str): The URI for the Azure Log Analytics workspace.
-            customer_id (str): The customer ID or workspace ID for Azure Sentinel.
-            shared_key (str): The shared key for authentication with Azure Sentinel.
-            logs_obj (str): The logs to be sent to Azure Sentinel in JSON format.
+    Args:
+        logAnalyticsUri (str): The URI for the Azure Log Analytics workspace.
+        customer_id (str): The customer ID or workspace ID for Azure Sentinel.
+        shared_key (str): The shared key for authentication with Azure Sentinel.
+        logs_obj (str): The logs to be sent to Azure Sentinel in JSON format.
 
-        Returns:
-            int: The HTTP response status code if successful, or if there was an error.
+    Returns:
+        int: The HTTP response status code if successful, or if there was an error.
     """
     from email.utils import formatdate
 
@@ -84,7 +91,7 @@ def save_to_sentinel(logAnalyticsUri:str, customer_id:str, shared_key:str, logs_
     except Exception as ex:
         logging.error(str(ex))
         logging.error("Invalid Workspace ID")
-        raise ex
+        return 500
 
     if response.status_code in range(200, 299):
         return response.status_code
@@ -95,4 +102,4 @@ def save_to_sentinel(logAnalyticsUri:str, customer_id:str, shared_key:str, logs_
                 response.status_code
             )
         )
-        raise Exception(f"{response.status_code} - {response.content}")
+        return 500

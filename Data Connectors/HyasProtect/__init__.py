@@ -1,15 +1,13 @@
-# import datetime
+import logging
 from datetime import datetime, timedelta, timezone
 from json import dumps
-import logging
-import requests
-
 from os import environ
+
 import azure.functions as func
+import requests
 
 from .state_manager import StateManager
 from .utils import save_to_sentinel
-
 
 customer_id = environ.get("WorkspaceID")
 shared_key = environ.get("WorkspaceKey")
@@ -40,6 +38,15 @@ state = StateManager(connection_string)
 
 
 def get_from_and_to_date(date_format=INPUT_DATE_FORMAT):
+    """
+    Returns the 'from' and 'to' dates as formatted strings based on the given date_format.
+
+    Args:
+        date_format (str): Optional. The format string for the output dates. Default is INPUT_DATE_FORMAT.
+
+    Returns:
+        tuple: A tuple containing the 'from' and 'to' dates as formatted strings.
+    """
     current_date_time = datetime.utcnow().replace(second=0, microsecond=0)
     last_run_date_time = state.get()
     logging.debug(last_run_date_time)
@@ -52,6 +59,12 @@ def get_from_and_to_date(date_format=INPUT_DATE_FORMAT):
 
 
 def call_hyas_protect_api():
+    """
+    Calls the HYAS Protect API to fetch logs based on specified filters and saves them to Sentinel.
+
+    Returns:
+        None
+    """
     url = "https://api.hyas.com/dns-log-report/v2/logs"
     (
         from_datetime,
@@ -78,17 +91,21 @@ def call_hyas_protect_api():
 
     applied_filters = [query_data]
 
-    filter_options = {
-        "FetchBlockedDomains": "blocked",
-        "FetchSuspiciousDomains": "suspicious",
-        "FetchMaliciousDomains": "malicious",
-        "FetchPermittedDomains": "permitted",
-    }
+    if FetchBlockedDomains == "Yes":
+        blocked_query = {"id": "reputation", "value": "blocked"}
+        applied_filters.append(blocked_query)
 
-    for option, value in filter_options.items():
-        if globals().get(option) == "Yes":
-            blocked_query = {"id": "reputation", "value": value}
-            applied_filters.append(blocked_query)
+    if FetchSuspiciousDomains == "Yes":
+        blocked_query = {"id": "reputation", "value": "suspicious"}
+        applied_filters.append(blocked_query)
+
+    if FetchMaliciousDomains == "Yes":
+        blocked_query = {"id": "reputation", "value": "malicious"}
+        applied_filters.append(blocked_query)
+
+    if FetchPermittedDomains == "Yes":
+        blocked_query = {"id": "reputation", "value": "permitted"}
+        applied_filters.append(blocked_query)
 
     data = {"applied_filters": applied_filters}
     total_count = 1
@@ -118,27 +135,33 @@ def call_hyas_protect_api():
             sentinel_resp = save_to_sentinel(
                 logAnalyticsUri, customer_id, shared_key, dumps(sentinel_logs)
             )
-            if sentinel_resp is not None:
+            if sentinel_resp in range(200, 299):
                 logging.info(
-                    f"Logs from {from_date} to {to_date} with filter {str(data)} saved in sentinel successfully."
+                    f"HYAS Protect logs from {from_date} to {to_date} with filter {str(data)} saved in sentinel successfully."
                 )
+            state.post(to_datetime)
         else:
-            # Print the error message if the request was unsuccessful
             if response.status_code == 403:
-                logging.info("Invalid HYAS API KEY.")
+                logging.error("Invalid HYAS API KEY.")
             logging.info(response.content)
             logging.info(
-                "Unable to fetch logs from HyasProtect API. Response code: {}".format(
-                    response.status_code
-                )
+                f"Unable to fetch logs from HyasProtect API. Response code: {response.status_code}"
             )
             break
         if records_fetched >= total_count:
             break
-    state.post(to_datetime)
 
 
 def make_hyas_dict(data: dict):
+    """
+    Converts a dictionary representing HYAS Protect log data into a standardized format.
+
+    Args:
+        data (dict): The dictionary containing the HYAS Protect log data.
+
+    Returns:
+        dict: The converted log data in a standardized format.
+    """
     return {
         "Domain": data.get("domain"),
         "FQDN": ",".join(data.get("markup", {}).get("fqdn", {})),
@@ -169,6 +192,15 @@ def make_hyas_dict(data: dict):
 
 
 def main(mytimer: func.TimerRequest) -> None:
+    """
+    The main function for the timer trigger.
+
+    Args:
+        mytimer (func.TimerRequest): The TimerRequest object containing information about the timer trigger.
+
+    Returns:
+        None
+    """
     utc_timestamp = datetime.utcnow().replace(tzinfo=timezone.utc).isoformat()
     if mytimer.past_due:
         logging.info("The timer is past due!")
