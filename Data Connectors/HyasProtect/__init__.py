@@ -124,6 +124,8 @@ def call_hyas_protect_api():
                 )
         else:
             # Print the error message if the request was unsuccessful
+            if response.status_code == 403:
+                logging.info("Invalid HYAS API KEY.")
             logging.info(response.content)
             logging.info(
                 "Unable to fetch logs from HyasProtect API. Response code: {}".format(
