@@ -1,40 +1,29 @@
 import logging
+import azure.functions as func
+import requests
 from datetime import datetime, timedelta, timezone
 from json import dumps
 from os import environ
-
-import azure.functions as func
-import requests
-
 from .state_manager import StateManager
 from .utils import save_to_sentinel
 
 customer_id = environ.get("WorkspaceID")
 shared_key = environ.get("WorkspaceKey")
-HYAS_API_KEY = environ.get("ApiKey")
 connection_string = environ.get("AzureWebJobsStorage")
-FetchBlockedDomains = environ.get("FetchBlockedDomains")
-FetchSuspiciousDomains = environ.get("FetchSuspiciousDomains")
-FetchMaliciousDomains = environ.get("FetchMaliciousDomains")
-FetchPermittedDomains = environ.get("FetchPermittedDomains")
+fetch_blocked_domains = environ.get("FetchBlockedDomains")
+fetch_suspicious_domains = environ.get("FetchSuspiciousDomains")
+fetch_malicious_domains = environ.get("FetchMaliciousDomains")
+fetch_permitted_domains = environ.get("FetchPermittedDomains")
+hyas_api_key = environ.get("ApiKey")
+log_analytics_uri = (
+    f"https://{customer_id}.ods.opinsights.azure.com/api/logs?api-version=2016-04-01"
+)
+state = StateManager(connection_string)
+
 LAST_X_DAYS = 0
 PAGE_SIZE = 1000
 OUTPUT_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 INPUT_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-START = environ.get("Start")
-END = environ.get("End")
-
-
-logAnalyticsUri = (
-    "https://"
-    + customer_id
-    + ".ods.opinsights.azure.com"
-    + "/api/logs"
-    + "?api-version=2016-04-01"
-)
-
-
-state = StateManager(connection_string)
 
 
 def get_from_and_to_date(date_format=INPUT_DATE_FORMAT):
@@ -65,6 +54,15 @@ def call_hyas_protect_api():
     Returns:
         None
     """
+
+    if (
+        fetch_blocked_domains == "No"
+        and fetch_suspicious_domains == "No"
+        and fetch_malicious_domains == "No"
+        and fetch_permitted_domains == "No"
+    ):
+        return
+
     url = "https://api.hyas.com/dns-log-report/v2/logs"
     (
         from_datetime,
@@ -76,55 +74,47 @@ def call_hyas_protect_api():
     to_date = datetime.strptime(to_datetime, INPUT_DATE_FORMAT).strftime(
         OUTPUT_DATE_FORMAT
     )
-    # Optional: Provide any required headers or parameters
-    headers = {"Content-Type": "application/json", "X-API-Key": HYAS_API_KEY}
+    applied_filters = [
+        {
+            "id": "datetime",
+            "isRange": True,
+            "rangeValue": {
+                "start": from_date,
+                "end": to_date,
+                "timeType": "range",
+            },
+        }
+    ]
+    if fetch_blocked_domains == "Yes":
+        applied_filters.append({"id": "reputation", "value": "blocked"})
 
-    query_data = {
-        "id": "datetime",
-        "isRange": True,
-        "rangeValue": {
-            "start": START or from_date,
-            "end": END or to_date,
-            "timeType": "range",
-        },
-    }
+    if fetch_suspicious_domains == "Yes":
+        applied_filters.append({"id": "reputation", "value": "suspicious"})
 
-    applied_filters = [query_data]
+    if fetch_malicious_domains == "Yes":
+        applied_filters.append({"id": "reputation", "value": "malicious"})
 
-    if FetchBlockedDomains == "Yes":
-        blocked_query = {"id": "reputation", "value": "blocked"}
-        applied_filters.append(blocked_query)
-
-    if FetchSuspiciousDomains == "Yes":
-        blocked_query = {"id": "reputation", "value": "suspicious"}
-        applied_filters.append(blocked_query)
-
-    if FetchMaliciousDomains == "Yes":
-        blocked_query = {"id": "reputation", "value": "malicious"}
-        applied_filters.append(blocked_query)
-
-    if FetchPermittedDomains == "Yes":
-        blocked_query = {"id": "reputation", "value": "permitted"}
-        applied_filters.append(blocked_query)
+    if fetch_permitted_domains == "Yes":
+        applied_filters.append({"id": "reputation", "value": "permitted"})
 
     data = {"applied_filters": applied_filters}
-    total_count = 1
-    page_size = PAGE_SIZE  # 1000 records per api call
-    page_number = 0
-    records_fetched = 0
+    total_count, page_size, page_number, records_fetched = 1, PAGE_SIZE, 0, 0
     while records_fetched < total_count:
         # Prepare the paging parameters
-        paging_params = {
+        data["paging"] = {
             "order": "desc",
             "page_number": page_number,
             "page_size": page_size,
             "page_type": "standard",
             "sort": "datetime",
         }
-        data["paging"] = paging_params
 
         # Make the API call
-        response = requests.post(url, headers=headers, data=dumps(data))
+        response = requests.post(
+            url,
+            headers={"Content-Type": "application/json", "X-API-Key": hyas_api_key},
+            data=dumps(data),
+        )
         if response.status_code in range(200, 299):
             result = response.json()
             logs = result["logs"]
@@ -133,7 +123,7 @@ def call_hyas_protect_api():
             total_count = result["total_count"]
             sentinel_logs = [make_hyas_dict(log) for log in logs]
             sentinel_resp = save_to_sentinel(
-                logAnalyticsUri, customer_id, shared_key, dumps(sentinel_logs)
+                log_analytics_uri, customer_id, shared_key, dumps(sentinel_logs)
             )
             if sentinel_resp in range(200, 299):
                 logging.info(
@@ -141,11 +131,11 @@ def call_hyas_protect_api():
                 )
             state.post(to_datetime)
         else:
-            if response.status_code == 403:
+            if response.status_code in [401, 403]:
                 logging.error("Invalid HYAS API KEY.")
             logging.info(response.content)
             logging.info(
-                f"Unable to fetch logs from HyasProtect API. Response code: {response.status_code}"
+                f"Unable to fetch logs from Hyas Protect API. Response code: {response.status_code}"
             )
             break
         if records_fetched >= total_count:
@@ -164,9 +154,9 @@ def make_hyas_dict(data: dict):
     """
     return {
         "Domain": data.get("domain"),
-        "FQDN": ",".join(data.get("markup", {}).get("fqdn", {})),
-        "Domain Category": ",".join(data.get("domain_category", [])),
-        "FQDN Nameserver": ",".join(data.get("markup", {}).get("nameserver", {})),
+        "FQDN": data.get("markup", {}).get("fqdn", {}),
+        "Domain Category": data.get("domain_category", []),
+        "FQDN Nameserver": data.get("markup", {}).get("nameserver", {}),
         "NS IP": data.get("nameserver_ip", {}),
         "ARecord IP": data.get("a_record", {}),
         "Registrar": data.get("registrar"),
@@ -175,15 +165,17 @@ def make_hyas_dict(data: dict):
         "Deployment mode": data.get("resolver_mode"),
         "DomainTLD": data.get("domain_tld"),
         "Domain Age (days)": data.get("domain_age"),
-        "Tags": ",".join(data.get("tags", [])),
+        "Tags": data.get("tags", []),
         "Query Type": data.get("query_type"),
         "Response Code": data.get("response_code"),
         "TTL (sec)": data.get("ttl"),
         "Nameserver": data.get("nameserver"),
         "NS TLD": data.get("nameserver_tld"),
         "AAAA Record IP": data.get("aaaa_record"),
-        "CName FQDN": ",".join(data.get("markup", {}).get("cname", {})),
-        "CName": ",".join(data.get("c_name", [])),
+        "CName FQDN": data.get("markup", {}).get("cname", {}),
+        "CName": data.get("c_name", []),
+        "Policy": data.get("policy"),
+        "CName TLD": data.get("c_name_tld"),
         "verdict": data.get("verdict"),
         "verdictSource": data.get("verdictSource"),
         "verdictStatus": data.get("verdictStatus"),
@@ -201,10 +193,9 @@ def main(mytimer: func.TimerRequest) -> None:
     Returns:
         None
     """
-    utc_timestamp = datetime.utcnow().replace(tzinfo=timezone.utc).isoformat()
     if mytimer.past_due:
         logging.info("The timer is past due!")
         return
+    utc_timestamp = datetime.utcnow().replace(tzinfo=timezone.utc).isoformat()
     call_hyas_protect_api()
-
     logging.info("Python timer trigger function ran at %s", utc_timestamp)

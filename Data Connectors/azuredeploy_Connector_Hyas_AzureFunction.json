@@ -10,18 +10,27 @@
         },
         "WorkspaceID": {
             "type": "string",
-            "defaultValue": "<workspaceID>",
-            "minLength": 1
+            "defaultValue": "<WorkspaceID>",
+            "minLength": 1,
+			"metadata": {
+                "description": "The Workspace ID can be found in the 'Overview' section of your Azure Sentinel workspace."
+            }
         },
         "WorkspaceKey": {
             "type": "securestring",
             "defaultValue": "<workspaceKey>",
-            "minLength": 1
+            "minLength": 1,
+			"metadata": {
+                "description": "The Workspace Key can be found in the Azure portal within the configuration settings of the Azure resource that corresponds to the workspace."
+            }
         },
         "APIKey": {
             "type": "securestring",
-            "defaultValue": "<changeme>",
-            "minLength": 1
+            "defaultValue": "<apikey>",
+            "minLength": 1,
+			"metadata": {
+                "description": "The HYAS API Key."
+            }
         },
         "TimeInterval": {
             "type": "string",
@@ -73,16 +82,6 @@
             ],
 			"minLength": 1,
 			"type": "string"
-        },
-		 "Start": {
-            "type": "string",
-            "defaultValue": "2022-06-06T00:00:00.000Z",
-            "minLength": 1
-        },
-		 "End": {
-            "type": "string",
-            "defaultValue": "2023-06-07T23:59:59.999Z",
-            "minLength": 1
         }
     },
     "variables": {
@@ -229,8 +228,6 @@
                         "logAnalyticsUri": "[variables('LogAnaltyicsUri')]",
                         "timeInterval": "[parameters('TimeInterval')]",
                         "Polling":  "[variables('Polling')]",
-						"Start": "[parameters('Start')]",
-						"End": "[parameters('End')]",
                         "WEBSITE_RUN_FROM_PACKAGE": "https://github.com/moin-loginsoft/HyasProtect/archive/refs/heads/main.zip"
 
                     }
