@@ -24,6 +24,8 @@ LAST_X_DAYS = 0
 PAGE_SIZE = 1000
 OUTPUT_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 INPUT_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+HYAS_URL = "https://api.hyas.com/dns-log-report/v2/logs"
+
 
 
 def get_from_and_to_date(date_format=INPUT_DATE_FORMAT):
@@ -61,9 +63,9 @@ def call_hyas_protect_api():
         and fetch_malicious_domains == "No"
         and fetch_permitted_domains == "No"
     ):
+        logging.info("All fetch domains variables are set to 'No'. Returning None.")
         return
 
-    url = "https://api.hyas.com/dns-log-report/v2/logs"
     (
         from_datetime,
         to_datetime,
@@ -111,7 +113,7 @@ def call_hyas_protect_api():
 
         # Make the API call
         response = requests.post(
-            url,
+            HYAS_URL,
             headers={"Content-Type": "application/json", "X-API-Key": hyas_api_key},
             data=dumps(data),
         )
@@ -176,10 +178,10 @@ def make_hyas_dict(data: dict):
         "CName": data.get("c_name", []),
         "Policy": data.get("policy"),
         "CName TLD": data.get("c_name_tld"),
-        "verdict": data.get("verdict"),
-        "verdictSource": data.get("verdictSource"),
-        "verdictStatus": data.get("verdictStatus"),
-        "datetime": data.get("datetime"),
+        "Verdict": data.get("verdict"),
+        "VerdictSource": data.get("verdictSource"),
+        "VerdictStatus": data.get("verdictStatus"),
+        "Datetime": data.get("datetime"),
     }
 
 

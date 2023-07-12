@@ -1,17 +1,15 @@
 {
-	"publisherId": "cybersixgill1657701397011",
-	"offerId": "azure-sentinel-cybersixgill-actionable-alerts",
-	"firstPublishDate": "2023-02-27",
-	"lastPublishDate": "2023-02-27",
-	"providers": ["Cybersixgill"],
+	"publisherId": "hyas",
+	"offerId": "a-hyas-insight-azure-sentinel-solutions-gallery",
+	"firstPublishDate": "2021-10-20",
+	"providers": ["HYAS"],
 	"categories": {
 		"domains" : ["Security - Threat Intelligence"],
 		"verticals": []
 	},
 	"support": {
-	  "name": "Cybersixgill",
-	  "email": "info@cybersixgill.com",
+	  "name": "HYAS",
 	  "tier": "Partner",
-	  "link": "https://www.cybersixgill.com/"
+	  "link": "https://www.hyas.com/contact"
 	}
 }

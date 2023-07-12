@@ -52,13 +52,13 @@ def build_signature(
 
 
 def save_to_sentinel(
-    logAnalyticsUri: str, customer_id: str, shared_key: str, logs_obj: str
+    log_analytics_uri: str, customer_id: str, shared_key: str, logs_obj: str
 ):
     """
-    Saves logs to Azure Sentinel using the specified logAnalyticsUri, customer_id, shared_key, and logs_obj.
+    Saves logs to Azure Sentinel using the specified log_analytics_uri, customer_id, shared_key, and logs_obj.
 
     Args:
-        logAnalyticsUri (str): The URI for the Azure Log Analytics workspace.
+        log_analytics_uri (str): The URI for the Azure Log Analytics workspace.
         customer_id (str): The customer ID or workspace ID for Azure Sentinel.
         shared_key (str): The shared key for authentication with Azure Sentinel.
         logs_obj (str): The logs to be sent to Azure Sentinel in JSON format.
@@ -78,7 +78,6 @@ def save_to_sentinel(
         "application/json",
         "/api/logs",
     )
-    uri = logAnalyticsUri
     headers = {
         "content-type": "application/json",
         "Authorization": signature,
@@ -87,7 +86,7 @@ def save_to_sentinel(
         "time-generated-field": "date",
     }
     try:
-        response = requests.post(uri, data=logs_obj, headers=headers)
+        response = requests.post(log_analytics_uri, data=logs_obj, headers=headers)
     except Exception as ex:
         logging.error(str(ex))
         logging.error("Invalid Workspace ID")
